@@ -1,0 +1,109 @@
+<%- include('partials/head', { title: title }) %>
+<div class="landing-page">
+    <header class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="hero-title">
+                        <span class="gradient-text">FlexBase</span>
+                        <br>Where Collectors Connect
+                    </h1>
+                    <p class="hero-description">
+                        Join the ultimate social platform for sneaker heads, watch enthusiasts, 
+                        and luxury collectors. Share your passion, discover rare finds, 
+                        and connect with fellow collectors worldwide.
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="/signup" class="btn btn-primary">Get Started</a>
+                        <a href="/login" class="btn btn-secondary">Sign In</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="floating-cards">
+                        <div class="card card-1">
+                            <img src="https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Sneakers">
+                        </div>
+                        <div class="card card-2">
+                            <img src="https://images.pexels.com/photos/190819/pexels-photo-190819.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Watch">
+                        </div>
+                        <div class="card card-3">
+                            <img src="https://images.pexels.com/photos/1927594/pexels-photo-1927594.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Luxury">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="features-section">
+        <div class="container">
+            <h2 class="section-title">Why Choose FlexBase?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Connect with Collectors</h3>
+                    <p>Find and follow collectors who share your passion for sneakers, watches, and luxury items.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bookmark"></i>
+                    </div>
+                    <h3>Organize Collections</h3>
+                    <p>Create custom collections to showcase your prized possessions and track your collecting journey.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Real-time Updates</h3>
+                    <p>Get instant notifications for likes, comments, and new posts from your favorite collectors.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Discover Rare Finds</h3>
+                    <p>Explore trending items and discover rare pieces through our intelligent recommendation system.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <% if (trendingPosts && trendingPosts.length > 0) { %>
+    <section class="trending-section">
+        <div class="container">
+            <h2 class="section-title">Trending Now</h2>
+            <div class="trending-grid">
+                <% trendingPosts.forEach(post => { %>
+                <div class="trending-item">
+                    <img src="<%= post.mediaURL %>" alt="Trending item">
+                    <div class="trending-overlay">
+                        <div class="trending-info">
+                            <span class="trending-user">@<%= post.user.username %></span>
+                            <span class="trending-likes">
+                                <i class="fas fa-heart"></i>
+                                <%= post.likes.length %>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <% }) %>
+            </div>
+        </div>
+    </section>
+    <% } %>
+
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to showcase your collection?</h2>
+                <p>Join thousands of collectors already using FlexBase to connect and share their passion.</p>
+                <a href="/signup" class="btn btn-primary btn-lg">Join FlexBase Today</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<%- include('partials/scripts') %>

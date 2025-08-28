@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="feed-container">
+        <div class="feed-content">
+            <div class="feed-header">
+                <h2>Your Feed</h2>
+                <p>Latest posts from collectors you follow</p>
+            </div>
+            
+            <% if (posts.length === 0) { %>
+            <div class="empty-feed">
+                <div class="empty-icon">
+                    <i class="fas fa-camera"></i>
+                </div>
+                <h3>Your feed is empty</h3>
+                <p>Follow other collectors to see their posts here, or create your first post to get started!</p>
+                <div class="empty-actions">
+                    <a href="/explore" class="btn btn-primary">Explore</a>
+                    <a href="/create" class="btn btn-secondary">Create Post</a>
+                </div>
+            </div>
+            <% } else { %>
+            <div class="posts-grid">
+                <% posts.forEach(post => { %>
+                <%- include('partials/post-card', { post: post, user: user }) %>
+                <% }) %>
+            </div>
+            <% } %>
+            
+            <div class="load-more" id="load-more">
+                <button class="btn btn-secondary" onclick="loadMorePosts()">
+                    <i class="fas fa-chevron-down"></i>
+                    Load More
+                </button>
+            </div>
+        </div>
+        
+        <div class="feed-sidebar">
+            <div class="suggestions-card">
+                <h3>Suggested Collectors</h3>
+                <div class="suggestions-list" id="suggestions-list">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                <a href="/explore" class="view-all-link">View All</a>
+            </div>
+            
+            <div class="trending-tags">
+                <h3>Trending Tags</h3>
+                <div class="tags-list">
+                    <span class="tag-item">#AirJordan</span>
+                    <span class="tag-item">#Rolex</span>
+                    <span class="tag-item">#Supreme</span>
+                    <span class="tag-item">#Nike</span>
+                    <span class="tag-item">#Adidas</span>
+                    <span class="tag-item">#Patek</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <%- include('partials/scripts') %>
+    <script>
+        let currentPage = 1;
+        let isLoading = false;
+        
+        async function loadMorePosts() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            currentPage++;
+            
+            const loadMoreBtn = document.querySelector('#load-more button');
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            
+            try {
+                const response = await fetch(`/api/posts/feed?page=${currentPage}`);
+                const data = await response.json();
+                
+                if (data.success && data.posts.length > 0) {
+                    data.posts.forEach(post => {
+                        const postElement = createPostElement(post);
+                        document.querySelector('.posts-grid').appendChild(postElement);
+                    });
+                    
+                    if (!data.pagination.hasNext) {
+                        document.getElementById('load-more').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('load-more').style.display = 'none';
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to load more posts' });
+                currentPage--;
+            } finally {
+                isLoading = false;
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Load More';
+            }
+        }
+        
+        // Load suggested users
+        async function loadSuggestions() {
+            try {
+                const response = await fetch('/api/users/search?limit=5');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const suggestionsList = document.getElementById('suggestions-list');
+                    suggestionsList.innerHTML = data.users.map(user => `
+                        <div class="suggestion-item">
+                            <img src="${user.avatar}" alt="${user.username}" class="suggestion-avatar">
+                            <div class="suggestion-info">
+                                <span class="suggestion-username">@${user.username}</span>
+                                <span class="suggestion-bio">${user.bio || 'Collector'}</span>
+                            </div>
+                            <button class="btn btn-sm btn-primary" onclick="followUser('${user._id}')">
+                                Follow
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load suggestions:', error);
+            }
+        }
+        
+        // Load suggestions on page load
+        document.addEventListener('DOMContentLoaded', loadSuggestions);
+    </script>
+</body>
+</html>

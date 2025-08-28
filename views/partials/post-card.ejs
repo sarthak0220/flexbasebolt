@@ -1,0 +1,92 @@
+<div class="post-card" data-post-id="<%= post._id %>">
+    <div class="post-header">
+        <div class="post-user">
+            <img src="<%= post.user.avatar %>" alt="<%= post.user.username %>" class="user-avatar">
+            <div class="user-info">
+                <a href="/profile/<%= post.user._id %>" class="username">@<%= post.user.username %></a>
+                <span class="post-time"><%= new Date(post.createdAt).toLocaleDateString() %></span>
+            </div>
+        </div>
+        <% if (post.userCollection) { %>
+        <div class="post-collection">
+            <i class="fas fa-bookmark"></i>
+            <a href="/collection/<%= post.userCollection._id %>"><%= post.userCollection.name %></a>
+        </div>
+        <% } %>
+    </div>
+    
+    <div class="post-media">
+        <% if (post.mediaType === 'video') { %>
+        <video controls>
+            <source src="<%= post.mediaURL %>" type="video/mp4">
+        </video>
+        <% } else { %>
+        <img src="<%= post.mediaURL %>" alt="Post media">
+        <% } %>
+    </div>
+    
+    <div class="post-actions">
+        <button class="action-btn like-btn <%= post.likes.some(like => user && like.user.toString() === user._id.toString()) ? 'active' : '' %>" 
+                onclick="toggleLike('<%= post._id %>')">
+            <i class="fas fa-heart"></i>
+            <span class="like-count"><%= post.likes.length %></span>
+        </button>
+        
+        <button class="action-btn comment-btn" onclick="toggleComments('<%= post._id %>')">
+            <i class="fas fa-comment"></i>
+            <span class="comment-count"><%= post.comments.length %></span>
+        </button>
+        
+        <button class="action-btn share-btn" onclick="sharePost('<%= post._id %>')">
+            <i class="fas fa-share"></i>
+        </button>
+        
+        <button class="action-btn save-btn" onclick="savePost('<%= post._id %>')">
+            <i class="fas fa-bookmark"></i>
+        </button>
+    </div>
+    
+    <div class="post-content">
+        <p class="post-caption"><%= post.caption %></p>
+        
+        <% if (post.tags && post.tags.length > 0) { %>
+        <div class="post-tags">
+            <% post.tags.forEach(tag => { %>
+            <span class="tag tag-<%= tag.type %>">
+                <i class="fas fa-tag"></i>
+                <%= tag.name %>
+            </span>
+            <% }) %>
+        </div>
+        <% } %>
+    </div>
+    
+    <div class="post-comments hidden" id="comments-<%= post._id %>">
+        <div class="comments-list">
+            <% if (post.comments && post.comments.length > 0) { %>
+            <% post.comments.forEach(comment => { %>
+            <div class="comment-item">
+                <img src="<%= comment.user.avatar %>" alt="<%= comment.user.username %>" class="comment-avatar">
+                <div class="comment-content">
+                    <span class="comment-username">@<%= comment.user.username %></span>
+                    <p class="comment-text"><%= comment.text %></p>
+                    <span class="comment-time"><%= new Date(comment.createdAt).toLocaleDateString() %></span>
+                </div>
+            </div>
+            <% }) %>
+            <% } %>
+        </div>
+        
+        <% if (user) { %>
+        <div class="comment-form">
+            <img src="<%= user.avatar %>" alt="<%= user.username %>" class="comment-avatar">
+            <form onsubmit="addComment(event, '<%= post._id %>')">
+                <input type="text" placeholder="Add a comment..." required>
+                <button type="submit">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+        <% } %>
+    </div>
+</div>

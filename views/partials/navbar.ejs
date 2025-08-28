@@ -1,0 +1,46 @@
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/feed" class="nav-brand">
+            <i class="fas fa-gem"></i>
+            FlexBase
+        </a>
+        
+        <div class="nav-search">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" placeholder="Search users, items, brands..." id="search-input">
+            <div id="search-results" class="search-results hidden"></div>
+        </div>
+        
+        <div class="nav-menu">
+            <a href="/feed" class="nav-item <%= title.includes('Feed') ? 'active' : '' %>">
+                <i class="fas fa-home"></i>
+                <span>Feed</span>
+            </a>
+            <a href="/explore" class="nav-item <%= title.includes('Explore') ? 'active' : '' %>">
+                <i class="fas fa-compass"></i>
+                <span>Explore</span>
+            </a>
+            <a href="/create" class="nav-item <%= title.includes('Create') ? 'active' : '' %>">
+                <i class="fas fa-plus-circle"></i>
+                <span>Create</span>
+            </a>
+            <a href="/collections" class="nav-item <%= title.includes('Collections') ? 'active' : '' %>">
+                <i class="fas fa-bookmark"></i>
+                <span>Collections</span>
+            </a>
+            <div class="nav-item nav-profile">
+                <img src="<%= user.avatar %>" alt="Profile" class="profile-avatar">
+                <div class="profile-dropdown">
+                    <a href="/profile/<%= user._id %>">
+                        <i class="fas fa-user"></i>
+                        Profile
+                    </a>
+                    <a href="#" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>

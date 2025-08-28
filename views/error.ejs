@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <% if (user) { %>
+        <%- include('partials/navbar') %>
+    <% } %>
+    
+    <div class="error-page">
+        <h1><%= statusCode || '404' %></h1>
+        <h2><%= message || 'Page Not Found' %></h2>
+        <p>The page you're looking for doesn't exist or has been moved.</p>
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">Go Home</a>
+            <% if (user) { %>
+                <a href="/feed" class="btn btn-secondary">Back to Feed</a>
+            <% } else { %>
+                <a href="/login" class="btn btn-secondary">Sign In</a>
+            <% } %>
+        </div>
+    </div>
+    
+    <%- include('partials/scripts') %>
+</body>
+</html>
