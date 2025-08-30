@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="collections-container">
+        <div class="collections-header">
+            <div class="header-content">
+                <h1>My Collections</h1>
+                <p>Organize and showcase your items</p>
+            </div>
+            <button class="btn btn-primary" onclick="createCollection()">
+                <i class="fas fa-plus"></i>
+                New Collection
+            </button>
+        </div>
+        
+        <% if (collections.length === 0) { %>
+        <div class="empty-collections">
+            <div class="empty-icon">
+                <i class="fas fa-bookmark"></i>
+            </div>
+            <h3>No collections yet</h3>
+            <p>Create your first collection to organize your items</p>
+            <button class="btn btn-primary" onclick="createCollection()">
+                <i class="fas fa-plus"></i>
+                Create Collection
+            </button>
+        </div>
+        <% } else { %>
+        <div class="collections-grid">
+            <% collections.forEach(collection => { %>
+            <div class="collection-card">
+                <div class="collection-preview" onclick="window.location.href='/collection/<%= collection._id %>'">
+                    <% if (collection.items && collection.items.length > 0) { %>
+                    <% const previewItems = collection.items.slice(0, 4) %>
+                    <div class="preview-grid">
+                        <% previewItems.forEach((item, index) => { %>
+                        <div class="preview-item">
+                            <img src="<%= item.mediaURL %>" alt="<%= item.caption %>">
+                        </div>
+                        <% }) %>
+                    </div>
+                    <% } else { %>
+                    <div class="empty-preview">
+                        <i class="fas fa-plus"></i>
+                        <span>Add items</span>
+                    </div>
+                    <% } %>
+                </div>
+                
+                <div class="collection-details">
+                    <div class="collection-info">
+                        <h3><%= collection.name %></h3>
+                        <p class="collection-description"><%= collection.description || 'No description' %></p>
+                        <div class="collection-meta">
+                            <span class="collection-category">
+                                <i class="fas fa-tag"></i>
+                                <%= collection.category %>
+                            </span>
+                            <span class="collection-count">
+                                <i class="fas fa-image"></i>
+                                <%= collection.items.length %> items
+                            </span>
+                            <% if (collection.isPrivate) { %>
+                            <span class="collection-privacy">
+                                <i class="fas fa-lock"></i>
+                                Private
+                            </span>
+                            <% } %>
+                        </div>
+                    </div>
+                    
+                    <div class="collection-actions">
+                        <button class="action-btn" onclick="editCollection('<%= collection._id %>')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn" onclick="deleteCollection('<%= collection._id %>')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+        <% } %>
+    </div>
+    
+    <%- include('partials/scripts') %>
+    <script>
+        function createCollection() {
+            const modalContent = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Create New Collection</h3>
+                        <button onclick="flexbase.hideModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="create-collection-form">
+                            <div class="form-group">
+                                <label for="collection-name">Collection Name</label>
+                                <input type="text" id="collection-name" required maxlength="50" placeholder="e.g., My Sneaker Collection">
+                            </div>
+                            <div class="form-group">
+                                <label for="collection-category">Category</label>
+                                <select id="collection-category" required>
+                                    <option value="">Select category</option>
+                                    <option value="sneakers">Sneakers</option>
+                                    <option value="watches">Watches</option>
+                                    <option value="luxury">Luxury Items</option>
+                                    <option value="art">Art & Collectibles</option>
+                                    <option value="cars">Cars</option>
+                                    <option value="jewelry">Jewelry</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="collection-description">Description (Optional)</label>
+                                <textarea id="collection-description" maxlength="200" placeholder="Describe your collection..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="collection-private">
+                                    Make this collection private
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="flexbase.hideModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Create Collection</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-overlay').innerHTML = modalContent;
+            document.getElementById('modal-overlay').classList.add('active');
+            
+            document.getElementById('create-collection-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await submitNewCollection();
+            });
+        }
+        
+        async function submitNewCollection() {
+            const name = document.getElementById('collection-name').value;
+            const category = document.getElementById('collection-category').value;
+            const description = document.getElementById('collection-description').value;
+            const isPrivate = document.getElementById('collection-private').checked;
+            
+            try {
+                const response = await fetch('/api/collections', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, category, description, isPrivate })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Collection created successfully' });
+                    flexbase.hideModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to create collection' });
+            }
+        }
+        
+        function editCollection(collectionId) {
+            // Implementation for editing collection
+            showNotification({ type: 'info', message: 'Edit collection feature coming soon!' });
+        }
+        
+        async function deleteCollection(collectionId) {
+            if (!confirm('Are you sure you want to delete this collection? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/collections/${collectionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Collection deleted successfully' });
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to delete collection' });
+            }
+        }
+    </script>
+</body>
+</html>

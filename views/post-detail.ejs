@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="post-detail-container">
+        <div class="post-detail-content">
+            <div class="post-media-section">
+                <% if (post.mediaType === 'video') { %>
+                <video controls class="post-media">
+                    <source src="<%= post.mediaURL %>" type="video/mp4">
+                </video>
+                <% } else { %>
+                <img src="<%= post.mediaURL %>" alt="<%= post.caption %>" class="post-media">
+                <% } %>
+            </div>
+            
+            <div class="post-info-section">
+                <div class="post-header">
+                    <div class="post-user">
+                        <img src="<%= post.user.avatar %>" alt="<%= post.user.username %>" class="user-avatar">
+                        <div class="user-info">
+                            <a href="/profile/<%= post.user._id %>" class="username">@<%= post.user.username %></a>
+                            <span class="post-time"><%= new Date(post.createdAt).toLocaleDateString() %></span>
+                        </div>
+                    </div>
+                    
+                    <% if (isOwner) { %>
+                    <div class="post-actions">
+                        <button class="action-btn" onclick="deletePost()">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <% } %>
+                </div>
+                
+                <div class="post-content">
+                    <p class="post-caption"><%= post.caption %></p>
+                    
+                    <% if (post.tags && post.tags.length > 0) { %>
+                    <div class="post-tags">
+                        <% post.tags.forEach(tag => { %>
+                        <span class="tag tag-<%= tag.type %>">
+                            <i class="fas fa-tag"></i>
+                            <%= tag.name %>
+                        </span>
+                        <% }) %>
+                    </div>
+                    <% } %>
+                    
+                    <% if (post.userCollection) { %>
+                    <div class="post-collection">
+                        <i class="fas fa-bookmark"></i>
+                        <a href="/collection/<%= post.userCollection._id %>"><%= post.userCollection.name %></a>
+                    </div>
+                    <% } %>
+                </div>
+                
+                <div class="post-interactions">
+                    <div class="interaction-buttons">
+                        <button class="interaction-btn like-btn <%= isLiked ? 'active' : '' %>" onclick="toggleLike('<%= post._id %>')">
+                            <i class="fas fa-heart"></i>
+                            <span class="like-count"><%= likesCount %></span>
+                        </button>
+                        
+                        <button class="interaction-btn comment-btn">
+                            <i class="fas fa-comment"></i>
+                            <span class="comment-count"><%= commentsCount %></span>
+                        </button>
+                        
+                        <button class="interaction-btn share-btn" onclick="sharePost('<%= post._id %>')">
+                            <i class="fas fa-share"></i>
+                        </button>
+                        
+                        <button class="interaction-btn save-btn" onclick="savePost('<%= post._id %>')">
+                            <i class="fas fa-bookmark"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="comments-section">
+                    <div class="comments-header">
+                        <h3>Comments</h3>
+                    </div>
+                    
+                    <div class="comments-list" id="comments-list">
+                        <% if (post.comments && post.comments.length > 0) { %>
+                        <% post.comments.forEach(comment => { %>
+                        <div class="comment-item">
+                            <img src="<%= comment.user.avatar %>" alt="<%= comment.user.username %>" class="comment-avatar">
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <a href="/profile/<%= comment.user._id %>" class="comment-username">@<%= comment.user.username %></a>
+                                    <span class="comment-time"><%= new Date(comment.createdAt).toLocaleDateString() %></span>
+                                </div>
+                                <p class="comment-text"><%= comment.text %></p>
+                            </div>
+                        </div>
+                        <% }) %>
+                        <% } else { %>
+                        <div class="no-comments">
+                            <p>No comments yet. Be the first to comment!</p>
+                        </div>
+                        <% } %>
+                    </div>
+                    
+                    <% if (user) { %>
+                    <div class="comment-form">
+                        <img src="<%= user.avatar %>" alt="<%= user.username %>" class="comment-avatar">
+                        <form onsubmit="addComment(event, '<%= post._id %>')">
+                            <input type="text" placeholder="Add a comment..." required>
+                            <button type="submit">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <% } else { %>
+                    <div class="login-prompt">
+                        <p><a href="/login">Sign in</a> to leave a comment</p>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <%- include('partials/scripts') %>
+    <script>
+        // Join post room for real-time updates
+        if (window.socket) {
+            window.socket.emit('join_post', '<%= post._id %>');
+        }
+        
+        async function deletePost() {
+            if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/posts/<%= post._id %>', {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Post deleted successfully' });
+                    setTimeout(() => {
+                        window.location.href = '/profile/<%= post.user._id %>';
+                    }, 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to delete post' });
+            }
+        }
+        
+        // Override the addComment function for this page
+        window.addComment = async function(event, postId) {
+            event.preventDefault();
+            
+            if (!window.currentUser) {
+                showNotification({ type: 'error', message: 'Please log in to comment' });
+                return;
+            }
+            
+            const form = event.target;
+            const input = form.querySelector('input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            const submitBtn = form.querySelector('button');
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/posts/${postId}/comment`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    input.value = '';
+                    
+                    // Add comment to the list
+                    const commentsList = document.getElementById('comments-list');
+                    const noComments = commentsList.querySelector('.no-comments');
+                    if (noComments) {
+                        noComments.remove();
+                    }
+                    
+                    const commentElement = document.createElement('div');
+                    commentElement.className = 'comment-item';
+                    commentElement.innerHTML = `
+                        <img src="${data.comment.user.avatar}" alt="${data.comment.user.username}" class="comment-avatar">
+                        <div class="comment-content">
+                            <div class="comment-header">
+                                <a href="/profile/${data.comment.user._id}" class="comment-username">@${data.comment.user.username}</a>
+                                <span class="comment-time">just now</span>
+                            </div>
+                            <p class="comment-text">${data.comment.text}</p>
+                        </div>
+                    `;
+                    
+                    commentsList.appendChild(commentElement);
+                    
+                    // Update comment count
+                    document.querySelector('.comment-count').textContent = data.totalComments;
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to add comment' });
+            } finally {
+                submitBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

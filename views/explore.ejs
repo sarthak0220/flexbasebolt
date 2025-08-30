@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="explore-container">
+        <div class="explore-header">
+            <h1>Explore</h1>
+            <p>Discover trending items and collections from the community</p>
+        </div>
+        
+        <div class="explore-filters">
+            <div class="filter-tabs">
+                <button class="filter-tab <%= !currentCategory ? 'active' : '' %>" onclick="filterByCategory('')">
+                    All
+                </button>
+                <button class="filter-tab <%= currentCategory === 'sneakers' ? 'active' : '' %>" onclick="filterByCategory('sneakers')">
+                    Sneakers
+                </button>
+                <button class="filter-tab <%= currentCategory === 'watches' ? 'active' : '' %>" onclick="filterByCategory('watches')">
+                    Watches
+                </button>
+                <button class="filter-tab <%= currentCategory === 'luxury' ? 'active' : '' %>" onclick="filterByCategory('luxury')">
+                    Luxury
+                </button>
+                <button class="filter-tab <%= currentCategory === 'art' ? 'active' : '' %>" onclick="filterByCategory('art')">
+                    Art
+                </button>
+            </div>
+            
+            <div class="search-bar">
+                <input type="text" placeholder="Search items, brands, users..." value="<%= currentSearch || '' %>" id="explore-search">
+                <button onclick="searchItems()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        
+        <% if (posts.length === 0) { %>
+        <div class="empty-explore">
+            <div class="empty-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <h3>No items found</h3>
+            <p>Try adjusting your filters or search terms</p>
+        </div>
+        <% } else { %>
+        <div class="explore-grid">
+            <% posts.forEach(post => { %>
+            <div class="explore-item" onclick="window.location.href='/post/<%= post._id %>'">
+                <div class="item-media">
+                    <% if (post.mediaType === 'video') { %>
+                    <video>
+                        <source src="<%= post.mediaURL %>" type="video/mp4">
+                    </video>
+                    <div class="video-indicator">
+                        <i class="fas fa-play"></i>
+                    </div>
+                    <% } else { %>
+                    <img src="<%= post.mediaURL %>" alt="<%= post.caption %>">
+                    <% } %>
+                </div>
+                
+                <div class="item-overlay">
+                    <div class="item-stats">
+                        <span class="stat">
+                            <i class="fas fa-heart"></i>
+                            <%= post.likes.length %>
+                        </span>
+                        <span class="stat">
+                            <i class="fas fa-comment"></i>
+                            <%= post.comments.length %>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="item-info">
+                    <div class="item-user">
+                        <img src="<%= post.user.avatar %>" alt="<%= post.user.username %>">
+                        <span>@<%= post.user.username %></span>
+                    </div>
+                    <% if (post.userCollection) { %>
+                    <div class="item-collection">
+                        <i class="fas fa-bookmark"></i>
+                        <%= post.userCollection.name %>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+        <% } %>
+        
+        <div class="load-more" id="explore-load-more">
+            <button class="btn btn-secondary" onclick="loadMoreExplore()">
+                Load More
+            </button>
+        </div>
+    </div>
+    
+    <%- include('partials/scripts') %>
+    <script>
+        let currentExploreCategory = '<%= currentCategory || "" %>';
+        let currentExploreSearch = '<%= currentSearch || "" %>';
+        let explorePage = 1;
+        let isLoadingExplore = false;
+        
+        function filterByCategory(category) {
+            const url = new URL(window.location);
+            if (category) {
+                url.searchParams.set('category', category);
+            } else {
+                url.searchParams.delete('category');
+            }
+            window.location.href = url.toString();
+        }
+        
+        function searchItems() {
+            const searchInput = document.getElementById('explore-search');
+            const query = searchInput.value.trim();
+            
+            const url = new URL(window.location);
+            if (query) {
+                url.searchParams.set('search', query);
+            } else {
+                url.searchParams.delete('search');
+            }
+            window.location.href = url.toString();
+        }
+        
+        document.getElementById('explore-search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchItems();
+            }
+        });
+        
+        async function loadMoreExplore() {
+            if (isLoadingExplore) return;
+            
+            isLoadingExplore = true;
+            explorePage++;
+            
+            const loadMoreBtn = document.querySelector('#explore-load-more button');
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            
+            try {
+                const params = new URLSearchParams();
+                params.append('page', explorePage);
+                if (currentExploreCategory) params.append('category', currentExploreCategory);
+                if (currentExploreSearch) params.append('search', currentExploreSearch);
+                
+                const response = await fetch(`/api/posts/explore?${params}`);
+                const data = await response.json();
+                
+                if (data.success && data.posts.length > 0) {
+                    const grid = document.querySelector('.explore-grid');
+                    data.posts.forEach(post => {
+                        const itemElement = createExploreItem(post);
+                        grid.appendChild(itemElement);
+                    });
+                    
+                    if (!data.pagination.hasNext) {
+                        document.getElementById('explore-load-more').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('explore-load-more').style.display = 'none';
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to load more items' });
+                explorePage--;
+            } finally {
+                isLoadingExplore = false;
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.innerHTML = 'Load More';
+            }
+        }
+        
+        function createExploreItem(post) {
+            const div = document.createElement('div');
+            div.className = 'explore-item';
+            div.onclick = () => window.location.href = `/post/${post._id}`;
+            
+            div.innerHTML = `
+                <div class="item-media">
+                    ${post.mediaType === 'video' ? `
+                        <video>
+                            <source src="${post.mediaURL}" type="video/mp4">
+                        </video>
+                        <div class="video-indicator">
+                            <i class="fas fa-play"></i>
+                        </div>
+                    ` : `
+                        <img src="${post.mediaURL}" alt="${post.caption}">
+                    `}
+                </div>
+                
+                <div class="item-overlay">
+                    <div class="item-stats">
+                        <span class="stat">
+                            <i class="fas fa-heart"></i>
+                            ${post.likes.length}
+                        </span>
+                        <span class="stat">
+                            <i class="fas fa-comment"></i>
+                            ${post.comments.length}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="item-info">
+                    <div class="item-user">
+                        <img src="${post.user.avatar}" alt="${post.user.username}">
+                        <span>@${post.user.username}</span>
+                    </div>
+                    ${post.userCollection ? `
+                        <div class="item-collection">
+                            <i class="fas fa-bookmark"></i>
+                            ${post.userCollection.name}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            return div;
+        }
+    </script>
+</body>
+</html>

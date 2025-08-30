@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="create-container">
+        <div class="create-header">
+            <h1>Share Your Collection</h1>
+            <p>Upload and showcase your latest finds</p>
+        </div>
+        
+        <div class="create-content">
+            <form id="create-post-form" class="create-form" enctype="multipart/form-data">
+                <div class="media-upload">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-placeholder">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h3>Upload Media</h3>
+                            <p>Drag and drop or click to select</p>
+                            <small>Supports JPG, PNG, GIF, MP4 (max 10MB)</small>
+                        </div>
+                        <input type="file" id="media-input" name="media" accept="image/*,video/*" required>
+                    </div>
+                    <div class="media-preview hidden" id="media-preview"></div>
+                </div>
+                
+                <div class="post-details">
+                    <div class="form-group">
+                        <label for="caption">Caption</label>
+                        <textarea id="caption" name="caption" placeholder="Tell us about this item..." required maxlength="1000"></textarea>
+                        <div class="char-count">
+                            <span id="caption-count">0</span>/1000
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="collection">Add to Collection (Optional)</label>
+                        <select id="collection" name="userCollection">
+                            <option value="">Select a collection</option>
+                            <% collections.forEach(collection => { %>
+                            <option value="<%= collection._id %>"><%= collection.name %> (<%= collection.category %>)</option>
+                            <% }) %>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="createNewCollection()">
+                            <i class="fas fa-plus"></i>
+                            New Collection
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tags</label>
+                        <div class="tags-input">
+                            <div class="tags-container" id="tags-container"></div>
+                            <input type="text" id="tag-input" placeholder="Add tags (brand, year, etc.)">
+                        </div>
+                        <div class="tag-suggestions">
+                            <button type="button" class="tag-suggestion" onclick="addTag('Nike', 'brand')">Nike</button>
+                            <button type="button" class="tag-suggestion" onclick="addTag('Adidas', 'brand')">Adidas</button>
+                            <button type="button" class="tag-suggestion" onclick="addTag('Jordan', 'brand')">Jordan</button>
+                            <button type="button" class="tag-suggestion" onclick="addTag('Rolex', 'brand')">Rolex</button>
+                            <button type="button" class="tag-suggestion" onclick="addTag('Supreme', 'brand')">Supreme</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="visibility">Visibility</label>
+                        <select id="visibility" name="visibility">
+                            <option value="public">Public</option>
+                            <option value="followers">Followers Only</option>
+                            <option value="private">Private</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='/feed'">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <i class="fas fa-share"></i>
+                            Share Post
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <%- include('partials/scripts') %>
+    <script>
+        let selectedTags = [];
+        let selectedFile = null;
+        
+        // File upload handling
+        const uploadArea = document.getElementById('upload-area');
+        const mediaInput = document.getElementById('media-input');
+        const mediaPreview = document.getElementById('media-preview');
+        
+        uploadArea.addEventListener('click', () => mediaInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        mediaInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            // Validate file
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/mov'];
+            if (!allowedTypes.includes(file.type)) {
+                showNotification({ type: 'error', message: 'Invalid file type' });
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                showNotification({ type: 'error', message: 'File too large (max 10MB)' });
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadArea.classList.add('hidden');
+                mediaPreview.classList.remove('hidden');
+                
+                if (file.type.startsWith('video/')) {
+                    mediaPreview.innerHTML = `
+                        <video controls>
+                            <source src="${e.target.result}" type="${file.type}">
+                        </video>
+                        <button class="change-media-btn" onclick="changeMedia()">
+                            <i class="fas fa-edit"></i>
+                            Change
+                        </button>
+                    `;
+                } else {
+                    mediaPreview.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <button class="change-media-btn" onclick="changeMedia()">
+                            <i class="fas fa-edit"></i>
+                            Change
+                        </button>
+                    `;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function changeMedia() {
+            uploadArea.classList.remove('hidden');
+            mediaPreview.classList.add('hidden');
+            mediaInput.value = '';
+            selectedFile = null;
+        }
+        
+        // Caption character count
+        document.getElementById('caption').addEventListener('input', (e) => {
+            document.getElementById('caption-count').textContent = e.target.value.length;
+        });
+        
+        // Tags handling
+        document.getElementById('tag-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const tagText = e.target.value.trim();
+                if (tagText) {
+                    addTag(tagText, 'general');
+                    e.target.value = '';
+                }
+            }
+        });
+        
+        function addTag(name, type = 'general') {
+            if (selectedTags.find(tag => tag.name === name)) return;
+            
+            const tag = { name, type };
+            selectedTags.push(tag);
+            renderTags();
+        }
+        
+        function removeTag(index) {
+            selectedTags.splice(index, 1);
+            renderTags();
+        }
+        
+        function renderTags() {
+            const container = document.getElementById('tags-container');
+            container.innerHTML = selectedTags.map((tag, index) => `
+                <span class="tag tag-${tag.type}">
+                    <i class="fas fa-tag"></i>
+                    ${tag.name}
+                    <button type="button" onclick="removeTag(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
+        
+        // Form submission
+        document.getElementById('create-post-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await submitPost();
+        });
+        
+        async function submitPost() {
+            if (!selectedFile) {
+                showNotification({ type: 'error', message: 'Please select a media file' });
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sharing...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('media', selectedFile);
+                formData.append('caption', document.getElementById('caption').value);
+                formData.append('visibility', document.getElementById('visibility').value);
+                
+                const collection = document.getElementById('collection').value;
+                if (collection) {
+                    formData.append('userCollection', collection);
+                }
+                
+                if (selectedTags.length > 0) {
+                    formData.append('tags', JSON.stringify(selectedTags));
+                }
+                
+                const response = await fetch('/api/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Post shared successfully!' });
+                    setTimeout(() => {
+                        window.location.href = '/feed';
+                    }, 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to share post' });
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-share"></i> Share Post';
+            }
+        }
+        
+        function createNewCollection() {
+            // Redirect to collections page to create new collection
+            window.location.href = '/collections';
+        }
+    </script>
+</body>
+</html>

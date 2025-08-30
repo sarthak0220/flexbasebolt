@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/head', { title: title }) %>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="collection-detail-container">
+        <div class="collection-header">
+            <div class="collection-info">
+                <div class="collection-owner">
+                    <img src="<%= collection.user.avatar %>" alt="<%= collection.user.username %>" class="owner-avatar">
+                    <div class="owner-details">
+                        <h1><%= collection.name %></h1>
+                        <p class="collection-by">by <a href="/profile/<%= collection.user._id %>">@<%= collection.user.username %></a></p>
+                        <% if (collection.description) { %>
+                        <p class="collection-description"><%= collection.description %></p>
+                        <% } %>
+                    </div>
+                </div>
+                
+                <div class="collection-meta">
+                    <span class="collection-category">
+                        <i class="fas fa-tag"></i>
+                        <%= collection.category %>
+                    </span>
+                    <span class="collection-count">
+                        <i class="fas fa-image"></i>
+                        <%= collection.items.length %> items
+                    </span>
+                    <% if (collection.isPrivate) { %>
+                    <span class="collection-privacy">
+                        <i class="fas fa-lock"></i>
+                        Private
+                    </span>
+                    <% } %>
+                </div>
+            </div>
+            
+            <% if (isOwner) { %>
+            <div class="collection-actions">
+                <button class="btn btn-secondary" onclick="editCollection()">
+                    <i class="fas fa-edit"></i>
+                    Edit
+                </button>
+                <button class="btn btn-primary" onclick="addToCollection()">
+                    <i class="fas fa-plus"></i>
+                    Add Items
+                </button>
+            </div>
+            <% } %>
+        </div>
+        
+        <% if (collection.items.length === 0) { %>
+        <div class="empty-collection">
+            <div class="empty-icon">
+                <i class="fas fa-bookmark"></i>
+            </div>
+            <h3>Empty Collection</h3>
+            <p><%= isOwner ? 'Add your first item to this collection' : 'This collection doesn\'t have any items yet' %></p>
+            <% if (isOwner) { %>
+            <a href="/create" class="btn btn-primary">Add Items</a>
+            <% } %>
+        </div>
+        <% } else { %>
+        <div class="collection-grid">
+            <% collection.items.forEach(item => { %>
+            <div class="collection-item" onclick="window.location.href='/post/<%= item._id %>'">
+                <div class="item-media">
+                    <% if (item.mediaType === 'video') { %>
+                    <video>
+                        <source src="<%= item.mediaURL %>" type="video/mp4">
+                    </video>
+                    <div class="video-indicator">
+                        <i class="fas fa-play"></i>
+                    </div>
+                    <% } else { %>
+                    <img src="<%= item.mediaURL %>" alt="<%= item.caption %>">
+                    <% } %>
+                </div>
+                
+                <div class="item-overlay">
+                    <div class="item-stats">
+                        <span>
+                            <i class="fas fa-heart"></i>
+                            <%= item.likes.length %>
+                        </span>
+                        <span>
+                            <i class="fas fa-comment"></i>
+                            <%= item.comments.length %>
+                        </span>
+                    </div>
+                    
+                    <% if (isOwner) { %>
+                    <div class="item-actions">
+                        <button class="action-btn" onclick="event.stopPropagation(); removeFromCollection('<%= item._id %>')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <% } %>
+                </div>
+                
+                <div class="item-caption">
+                    <%= item.caption.length > 50 ? item.caption.substring(0, 50) + '...' : item.caption %>
+                </div>
+            </div>
+            <% }) %>
+        </div>
+        <% } %>
+    </div>
+    
+    <%- include('partials/scripts') %>
+    <script>
+        function editCollection() {
+            const modalContent = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Edit Collection</h3>
+                        <button onclick="flexbase.hideModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="edit-collection-form">
+                            <div class="form-group">
+                                <label for="edit-name">Collection Name</label>
+                                <input type="text" id="edit-name" value="<%= collection.name %>" required maxlength="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-category">Category</label>
+                                <select id="edit-category" required>
+                                    <option value="sneakers" <%= collection.category === 'sneakers' ? 'selected' : '' %>>Sneakers</option>
+                                    <option value="watches" <%= collection.category === 'watches' ? 'selected' : '' %>>Watches</option>
+                                    <option value="luxury" <%= collection.category === 'luxury' ? 'selected' : '' %>>Luxury Items</option>
+                                    <option value="art" <%= collection.category === 'art' ? 'selected' : '' %>>Art & Collectibles</option>
+                                    <option value="cars" <%= collection.category === 'cars' ? 'selected' : '' %>>Cars</option>
+                                    <option value="jewelry" <%= collection.category === 'jewelry' ? 'selected' : '' %>>Jewelry</option>
+                                    <option value="other" <%= collection.category === 'other' ? 'selected' : '' %>>Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-description">Description</label>
+                                <textarea id="edit-description" maxlength="200"><%= collection.description %></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="edit-private" <%= collection.isPrivate ? 'checked' : '' %>>
+                                    Private Collection
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="flexbase.hideModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-overlay').innerHTML = modalContent;
+            document.getElementById('modal-overlay').classList.add('active');
+            
+            document.getElementById('edit-collection-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await updateCollection();
+            });
+        }
+        
+        async function updateCollection() {
+            const name = document.getElementById('edit-name').value;
+            const category = document.getElementById('edit-category').value;
+            const description = document.getElementById('edit-description').value;
+            const isPrivate = document.getElementById('edit-private').checked;
+            
+            try {
+                const response = await fetch('/api/collections/<%= collection._id %>', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, category, description, isPrivate })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Collection updated successfully' });
+                    flexbase.hideModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to update collection' });
+            }
+        }
+        
+        function addToCollection() {
+            window.location.href = '/create';
+        }
+        
+        async function removeFromCollection(postId) {
+            if (!confirm('Remove this item from the collection?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/collections/<%= collection._id %>/remove-post/${postId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Item removed from collection' });
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to remove item' });
+            }
+        }
+        
+        function createCollection() {
+            const modalContent = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Create New Collection</h3>
+                        <button onclick="flexbase.hideModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="create-collection-form">
+                            <div class="form-group">
+                                <label for="collection-name">Collection Name</label>
+                                <input type="text" id="collection-name" required maxlength="50" placeholder="e.g., My Sneaker Collection">
+                            </div>
+                            <div class="form-group">
+                                <label for="collection-category">Category</label>
+                                <select id="collection-category" required>
+                                    <option value="">Select category</option>
+                                    <option value="sneakers">Sneakers</option>
+                                    <option value="watches">Watches</option>
+                                    <option value="luxury">Luxury Items</option>
+                                    <option value="art">Art & Collectibles</option>
+                                    <option value="cars">Cars</option>
+                                    <option value="jewelry">Jewelry</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="collection-description">Description (Optional)</label>
+                                <textarea id="collection-description" maxlength="200" placeholder="Describe your collection..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="collection-private">
+                                    Make this collection private
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="flexbase.hideModal()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Create Collection</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modal-overlay').innerHTML = modalContent;
+            document.getElementById('modal-overlay').classList.add('active');
+            
+            document.getElementById('create-collection-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await submitNewCollection();
+            });
+        }
+        
+        async function submitNewCollection() {
+            const name = document.getElementById('collection-name').value;
+            const category = document.getElementById('collection-category').value;
+            const description = document.getElementById('collection-description').value;
+            const isPrivate = document.getElementById('collection-private').checked;
+            
+            try {
+                const response = await fetch('/api/collections', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${flexbase.getToken()}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, category, description, isPrivate })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification({ type: 'success', message: 'Collection created successfully' });
+                    flexbase.hideModal();
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification({ type: 'error', message: data.message });
+                }
+            } catch (error) {
+                showNotification({ type: 'error', message: 'Failed to create collection' });
+            }
+        }
+    </script>
+</body>
+</html>
